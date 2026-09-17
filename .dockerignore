@@ -1,0 +1,7 @@
+**
+!Dockerfile
+!Dockerfile.train
+!requirements.txt
+!requirements-train.txt
+!real_time_traffic_analysis.py
+!scripts/**

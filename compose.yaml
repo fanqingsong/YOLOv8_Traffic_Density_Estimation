@@ -1,0 +1,74 @@
+services:
+  download-data:
+    profiles: ["train"]
+    build:
+      context: .
+      dockerfile: Dockerfile.train
+    environment:
+      RAW_DATA_DIR: /data/raw
+      KAGGLE_DATASET: ${KAGGLE_DATASET:-farzadnekouei/top-view-vehicle-detection-image-dataset}
+      KAGGLE_USERNAME: ${KAGGLE_USERNAME:-}
+      KAGGLE_KEY: ${KAGGLE_KEY:-}
+    volumes:
+      - ./data:/data
+      - ${KAGGLE_CONFIG_DIR:-./.kaggle}:/root/.kaggle:ro
+    command: ["python", "scripts/download_kaggle_dataset.py"]
+
+  prepare-data:
+    profiles: ["train"]
+    build:
+      context: .
+      dockerfile: Dockerfile.train
+    environment:
+      RAW_DATA_DIR: /data/raw
+      DATASET_DIR: /data/dataset
+    volumes:
+      - ./data:/data
+    depends_on:
+      download-data:
+        condition: service_completed_successfully
+    command: ["python", "scripts/prepare_dataset.py"]
+
+  train:
+    profiles: ["train"]
+    build:
+      context: .
+      dockerfile: Dockerfile.train
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      DATA_YAML: /data/dataset/data.yaml
+      MODEL_OUTPUT: /models/best.pt
+      ONNX_OUTPUT: /models/best.onnx
+      RUNS_PROJECT: /data/runs/detect
+      RUN_NAME: train
+      TRAIN_DEVICE: ${TRAIN_DEVICE:-0}
+      TRAIN_EPOCHS: ${TRAIN_EPOCHS:-100}
+      TRAIN_BATCH: ${TRAIN_BATCH:-32}
+      BASE_MODEL: ${BASE_MODEL:-yolov8n.pt}
+    volumes:
+      - ./data:/data
+      - ./models:/models
+    depends_on:
+      prepare-data:
+        condition: service_completed_successfully
+    command: ["python", "scripts/train_model.py"]
+
+  traffic-analysis:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      MODEL_PATH: /app/models/best.pt
+      VIDEO_PATH: /app/input/sample_video.mp4
+      OUTPUT_PATH: /app/output/processed_sample_video.avi
+      DISPLAY_VIDEO: "false"
+    volumes:
+      - ./models:/app/models:ro
+      - ./sample_video.mp4:/app/input/sample_video.mp4:ro
+      - ./output:/app/output

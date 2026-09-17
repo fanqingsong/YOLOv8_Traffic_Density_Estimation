@@ -65,9 +65,92 @@ Real-Time Traffic Density Estimation with YOLOv8 in Action:
 - **`LICENSE`**: The legal framework defining the terms under which this project's code and dataset can be used.
 - **`README.md`**: The document you are reading that offers an insightful overview and essential information about the project.
 - **`real_time_traffic_analysis.py`**: The Python script for deploying the YOLOv8 model to estimate traffic density in real-time on a local system.
+- **`Dockerfile`**: CPU inference container image.
+- **`Dockerfile.train`**: GPU training image (PyTorch CUDA + Kaggle CLI).
+- **`compose.yaml`**: Docker Compose services (Kaggle download → prepare → GPU train → inference).
+- **`scripts/`**: `download_kaggle_dataset.py`, `prepare_dataset.py`, `train_model.py`.
+- **`requirements.txt`**: Python dependencies for the CPU inference image.
+- **`requirements-train.txt`**: Python dependencies for the training image.
+- **`output/`**: Created at runtime; holds `processed_sample_video.avi` when using Docker Compose.
 - **`real-time_traffic_density_estimation_yolov8.ipynb`**: The Jupyter notebook that documents the model development pipeline, from data preparation to model evaluation and inference.
 - **`Running_Real-Time_Traffic_Analysis.gif`**: A GIF demonstration showing the real-time traffic analysis capability of our model when the `real_time_traffic_analysis.py` script is executed.
 - **`sample_video.mp4`**: The video file used for testing the traffic estimation algorithm and the deployment code in `real_time_traffic_analysis.py`.
+
+
+## 🐳 Run with Docker Compose
+
+Compose defines two flows:
+
+| Profile / service | Purpose |
+|-------------------|---------|
+| `--profile train` → `download-data` → `prepare-data` → `train` | Kaggle download, path fix-up, GPU fine-tuning |
+| `traffic-analysis` (default) | Headless traffic density inference on `sample_video.mp4` |
+
+### GPU training pipeline (Kaggle)
+
+**Requirements:** [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html), Docker Compose, and Kaggle API credentials.
+
+1. Copy `.env.example` to `.env` and set `KAGGLE_USERNAME` / `KAGGLE_KEY`, **or** put `kaggle.json` in `./.kaggle/`.
+2. Accept the dataset rules on Kaggle for [Top-View Vehicle Detection](https://www.kaggle.com/datasets/farzadnekouei/top-view-vehicle-detection-image-dataset).
+
+```bash
+mkdir -p data models .kaggle output
+cp .env.example .env   # edit with your Kaggle API key
+docker compose --profile train build
+docker compose --profile train up train
+```
+
+Artifacts:
+
+- Raw download: `data/raw/`
+- Prepared `data.yaml`: `data/dataset/data.yaml`
+- Training runs: `data/runs/detect/train/`
+- Best weights (for inference): `models/best.pt`, `models/best.onnx`
+- Sample video from dataset: `data/sample_video.mp4` (copy to project root if needed)
+
+Optional training overrides in `.env`: `TRAIN_EPOCHS`, `TRAIN_BATCH`, `BASE_MODEL`, `TRAIN_DEVICE`.
+
+Re-run only training (after data is already downloaded):
+
+```bash
+docker compose --profile train run --rm train
+```
+
+If GPU is not attached via Compose, try:
+
+```bash
+docker compose --profile train run --rm --gpus all train
+```
+
+**中文（训练流水线）：** 需 NVIDIA GPU + Container Toolkit。配置 `.env` 或 `./.kaggle/kaggle.json` 后执行 `docker compose --profile train up train`；权重输出到 `models/best.pt`，再用下方推理服务。
+
+### Inference (traffic analysis)
+
+**Prerequisites:** Docker with Compose plugin, `models/best.pt`, and `sample_video.mp4`.
+
+```bash
+mkdir -p models output
+docker compose build
+docker compose up
+```
+
+The first build may take several minutes (CPU PyTorch wheels in the inference image).
+
+Output: `output/processed_sample_video.avi`.
+
+```bash
+docker compose run --rm traffic-analysis
+docker compose down
+```
+
+**中文（推理）：**
+
+```bash
+mkdir -p models output
+docker compose build
+docker compose up
+# 或: docker compose run --rm traffic-analysis
+```
 
 
 ## 🚀 Instructions for Local Execution
@@ -102,7 +185,7 @@ Witness the real-time traffic analysis capability of our YOLOv8 model:
     ```bash
     python real_time_traffic_analysis.py
     ```
-3. **Real-Time Analysis**: The video window will display the live traffic analysis. To exit, simply press 'q' while the video window is active.
+3. **Real-Time Analysis**: The video window will display the live traffic analysis. To exit, simply press 'q' while the video window is active. The processed video is also saved as `processed_sample_video.avi`.
 
 This GIF showcases our algorithm running in real-time:
 
