@@ -24,9 +24,6 @@ services:
       DATASET_DIR: /data/dataset
     volumes:
       - ./data:/data
-    depends_on:
-      download-data:
-        condition: service_completed_successfully
     command: ["python", "scripts/prepare_dataset.py"]
 
   train:
@@ -48,9 +45,6 @@ services:
     volumes:
       - ./data:/data
       - ./models:/models
-    depends_on:
-      prepare-data:
-        condition: service_completed_successfully
     command: ["python", "scripts/train_model.py"]
 
   traffic-analysis:

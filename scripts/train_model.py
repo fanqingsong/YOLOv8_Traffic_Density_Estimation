@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fine-tune YOLOv8 on the prepared Kaggle vehicle dataset (GPU)."""
+"""Fine-tune YOLOv8 on the prepared Kaggle vehicle dataset."""
 
 from __future__ import annotations
 

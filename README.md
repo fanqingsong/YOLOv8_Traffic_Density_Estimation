@@ -67,7 +67,7 @@ Real-Time Traffic Density Estimation with YOLOv8 in Action:
 - **`real_time_traffic_analysis.py`**: The Python script for deploying the YOLOv8 model to estimate traffic density in real-time on a local system.
 - **`Dockerfile`**: CPU inference container image.
 - **`Dockerfile.train`**: GPU training image (PyTorch CUDA + Kaggle CLI).
-- **`compose.yaml`**: Docker Compose services (Kaggle download → prepare → GPU train → inference).
+- **`compose.yaml`**: Independent Docker Compose services for Kaggle download, dataset preparation, training, and inference.
 - **`compose.gpu.yaml`**: NVIDIA GPU override for the training service.
 - **`scripts/`**: `download_kaggle_dataset.py`, `prepare_dataset.py`, `train_model.py`.
 - **`requirements.txt`**: Python dependencies for the CPU inference image.
@@ -80,11 +80,11 @@ Real-Time Traffic Density Estimation with YOLOv8 in Action:
 
 ## 🐳 Run with Docker Compose
 
-Compose defines two flows:
+Compose defines independent training stages plus the inference service:
 
 | Profile / service | Purpose |
 |-------------------|---------|
-| `--profile train` → `download-data` → `prepare-data` → `train` | Kaggle download, path fix-up, GPU fine-tuning |
+| `--profile train` → `download-data`, `prepare-data`, `train` | Kaggle download, path fix-up, model fine-tuning |
 | `traffic-analysis` (default) | Headless traffic density inference on `sample_video.mp4` |
 
 ### Training pipeline (Kaggle)
@@ -95,34 +95,47 @@ requires the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud
 1. Copy `.env.example` to `.env` and set `KAGGLE_USERNAME` / `KAGGLE_KEY`, **or** put `kaggle.json` in `./.kaggle/`.
 2. Accept the dataset rules on Kaggle for [Top-View Vehicle Detection](https://www.kaggle.com/datasets/farzadnekouei/top-view-vehicle-detection-image-dataset).
 
-```bash
-mkdir -p data models .kaggle output
-cp .env.example .env   # edit with your Kaggle API key
-docker compose --profile train build
-docker compose --profile train up train
-```
-
-The command above uses CPU by default. For NVIDIA GPU training, use:
+Complete the one-time setup first:
 
 ```bash
-docker compose -f compose.yaml -f compose.gpu.yaml --profile train up train
+mkdir -p data models .kaggle output && cp .env.example .env
 ```
 
-Artifacts:
+Edit `.env` with your Kaggle API key, then run and verify each stage independently.
+Each command exits after completing only its own stage.
 
-- Raw download: `data/raw/`
-- Prepared `data.yaml`: `data/dataset/data.yaml`
-- Training runs: `data/runs/detect/train/`
-- Best weights (for inference): `models/best.pt`, `models/best.onnx`
-- Sample video from dataset: `data/sample_video.mp4` (copy to project root if needed)
+**Stage 1 — Download the Kaggle dataset**
 
-Optional training overrides in `.env`: `TRAIN_EPOCHS`, `TRAIN_BATCH`, `BASE_MODEL`, `TRAIN_DEVICE`.
+```bash
+docker compose --profile train run --rm download-data
+```
 
-Re-run only training (after data is already downloaded):
+Verify that `data/raw/.download_complete` and the extracted dataset exist.
+
+**Stage 2 — Prepare the YOLO dataset configuration**
+
+```bash
+docker compose --profile train run --rm prepare-data
+```
+
+Verify `data/dataset/data.yaml`. If the dataset includes the demo video, this stage
+also creates `data/sample_video.mp4`.
+
+**Stage 3 — Train and export with an NVIDIA GPU**
 
 ```bash
 docker compose -f compose.yaml -f compose.gpu.yaml --profile train run --rm train
 ```
+
+Verify the training run in `data/runs/detect/train/` and the exported models at
+`models/best.pt` and `models/best.onnx`.
+
+To train on CPU instead, use
+`docker compose --profile train run --rm train`. Stage 2 fails clearly when Stage 1
+has not produced a dataset, and Stage 3 fails clearly when Stage 2 has not produced
+`data/dataset/data.yaml`; neither command automatically runs an earlier stage.
+
+Optional training overrides in `.env`: `TRAIN_EPOCHS`, `TRAIN_BATCH`, `BASE_MODEL`, `TRAIN_DEVICE`.
 
 #### Fix NVIDIA runtime errors on WSL2 / Linux
 
@@ -158,13 +171,13 @@ NVIDIA driver, enable this WSL distribution under **Settings → Resources → W
 Integration**, then restart Docker Desktop. Do not configure a second Docker daemon
 inside WSL.
 
-After the verification command succeeds, start GPU training:
+After the verification command succeeds, run Stage 3:
 
 ```bash
-docker compose -f compose.yaml -f compose.gpu.yaml --profile train up train
+docker compose -f compose.yaml -f compose.gpu.yaml --profile train run --rm train
 ```
 
-默认的 `docker compose --profile train up train` 使用 **CPU**，避免未安装
+默认的 `docker compose --profile train run --rm train` 使用 **CPU**，避免未安装
 NVIDIA Runtime 时直接失败。GPU 训练必须叠加 `compose.gpu.yaml`。训练权重输出到
 `models/best.pt` 和 `models/best.onnx`。
 
