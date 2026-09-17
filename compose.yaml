@@ -1,6 +1,5 @@
 services:
   download-data:
-    profiles: ["train"]
     build:
       context: .
       dockerfile: Dockerfile.train
@@ -15,7 +14,6 @@ services:
     command: ["python", "scripts/download_kaggle_dataset.py"]
 
   prepare-data:
-    profiles: ["train"]
     build:
       context: .
       dockerfile: Dockerfile.train
@@ -27,7 +25,6 @@ services:
     command: ["python", "scripts/prepare_dataset.py"]
 
   train:
-    profiles: ["train"]
     build:
       context: .
       dockerfile: Dockerfile.train

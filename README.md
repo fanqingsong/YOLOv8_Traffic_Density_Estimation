@@ -82,9 +82,9 @@ Real-Time Traffic Density Estimation with YOLOv8 in Action:
 
 Compose defines independent training stages plus the inference service:
 
-| Profile / service | Purpose |
-|-------------------|---------|
-| `--profile train` → `download-data`, `prepare-data`, `train` | Kaggle download, path fix-up, model fine-tuning |
+| Service | Purpose |
+|---------|---------|
+| `download-data`, `prepare-data`, `train` | Kaggle download, path fix-up, model fine-tuning |
 | `traffic-analysis` (default) | Headless traffic density inference on `sample_video.mp4` |
 
 ### Training pipeline (Kaggle)
@@ -107,7 +107,7 @@ Each command exits after completing only its own stage.
 **Stage 1 — Download the Kaggle dataset**
 
 ```bash
-docker compose --profile train run --rm download-data
+docker compose run --rm download-data
 ```
 
 Verify that `data/raw/.download_complete` and the extracted dataset exist.
@@ -115,7 +115,7 @@ Verify that `data/raw/.download_complete` and the extracted dataset exist.
 **Stage 2 — Prepare the YOLO dataset configuration**
 
 ```bash
-docker compose --profile train run --rm prepare-data
+docker compose run --rm prepare-data
 ```
 
 Verify `data/dataset/data.yaml`. If the dataset includes the demo video, this stage
@@ -124,14 +124,14 @@ also creates `data/sample_video.mp4`.
 **Stage 3 — Train and export with an NVIDIA GPU**
 
 ```bash
-docker compose -f compose.yaml -f compose.gpu.yaml --profile train run --rm train
+docker compose -f compose.yaml -f compose.gpu.yaml run --rm train
 ```
 
 Verify the training run in `data/runs/detect/train/` and the exported models at
 `models/best.pt` and `models/best.onnx`.
 
 To train on CPU instead, use
-`docker compose --profile train run --rm train`. Stage 2 fails clearly when Stage 1
+`docker compose run --rm train`. Stage 2 fails clearly when Stage 1
 has not produced a dataset, and Stage 3 fails clearly when Stage 2 has not produced
 `data/dataset/data.yaml`; neither command automatically runs an earlier stage.
 
@@ -174,10 +174,10 @@ inside WSL.
 After the verification command succeeds, run Stage 3:
 
 ```bash
-docker compose -f compose.yaml -f compose.gpu.yaml --profile train run --rm train
+docker compose -f compose.yaml -f compose.gpu.yaml run --rm train
 ```
 
-默认的 `docker compose --profile train run --rm train` 使用 **CPU**，避免未安装
+默认的 `docker compose run --rm train` 使用 **CPU**，避免未安装
 NVIDIA Runtime 时直接失败。GPU 训练必须叠加 `compose.gpu.yaml`。训练权重输出到
 `models/best.pt` 和 `models/best.onnx`。
 
