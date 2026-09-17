@@ -34,20 +34,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.train
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
     environment:
       DATA_YAML: /data/dataset/data.yaml
       MODEL_OUTPUT: /models/best.pt
       ONNX_OUTPUT: /models/best.onnx
       RUNS_PROJECT: /data/runs/detect
       RUN_NAME: train
-      TRAIN_DEVICE: ${TRAIN_DEVICE:-0}
+      # CPU fallback when GPU is not passed to Docker (see compose.gpu.yaml)
+      TRAIN_DEVICE: ${TRAIN_DEVICE:-cpu}
       TRAIN_EPOCHS: ${TRAIN_EPOCHS:-100}
       TRAIN_BATCH: ${TRAIN_BATCH:-32}
       BASE_MODEL: ${BASE_MODEL:-yolov8n.pt}

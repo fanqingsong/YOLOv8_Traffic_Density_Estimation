@@ -1,0 +1,10 @@
+# Merge after NVIDIA Container Toolkit is installed (nvidia runtime in Docker):
+#   docker compose --profile train -f compose.yaml -f compose.gpu.yaml up train
+# Or one-off:
+#   docker compose --profile train run --rm --gpus all train
+services:
+  train:
+    runtime: nvidia
+    environment:
+      NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}
+      TRAIN_DEVICE: ${TRAIN_DEVICE:-0}

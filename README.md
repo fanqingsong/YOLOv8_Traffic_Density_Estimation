@@ -68,6 +68,7 @@ Real-Time Traffic Density Estimation with YOLOv8 in Action:
 - **`Dockerfile`**: CPU inference container image.
 - **`Dockerfile.train`**: GPU training image (PyTorch CUDA + Kaggle CLI).
 - **`compose.yaml`**: Docker Compose services (Kaggle download → prepare → GPU train → inference).
+- **`compose.gpu.yaml`**: NVIDIA GPU override for the training service.
 - **`scripts/`**: `download_kaggle_dataset.py`, `prepare_dataset.py`, `train_model.py`.
 - **`requirements.txt`**: Python dependencies for the CPU inference image.
 - **`requirements-train.txt`**: Python dependencies for the training image.
@@ -86,9 +87,10 @@ Compose defines two flows:
 | `--profile train` → `download-data` → `prepare-data` → `train` | Kaggle download, path fix-up, GPU fine-tuning |
 | `traffic-analysis` (default) | Headless traffic density inference on `sample_video.mp4` |
 
-### GPU training pipeline (Kaggle)
+### Training pipeline (Kaggle)
 
-**Requirements:** [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html), Docker Compose, and Kaggle API credentials.
+**Requirements:** Docker Compose and Kaggle API credentials. GPU training additionally
+requires the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html).
 
 1. Copy `.env.example` to `.env` and set `KAGGLE_USERNAME` / `KAGGLE_KEY`, **or** put `kaggle.json` in `./.kaggle/`.
 2. Accept the dataset rules on Kaggle for [Top-View Vehicle Detection](https://www.kaggle.com/datasets/farzadnekouei/top-view-vehicle-detection-image-dataset).
@@ -98,6 +100,12 @@ mkdir -p data models .kaggle output
 cp .env.example .env   # edit with your Kaggle API key
 docker compose --profile train build
 docker compose --profile train up train
+```
+
+The command above uses CPU by default. For NVIDIA GPU training, use:
+
+```bash
+docker compose -f compose.yaml -f compose.gpu.yaml --profile train up train
 ```
 
 Artifacts:
@@ -113,16 +121,52 @@ Optional training overrides in `.env`: `TRAIN_EPOCHS`, `TRAIN_BATCH`, `BASE_MODE
 Re-run only training (after data is already downloaded):
 
 ```bash
-docker compose --profile train run --rm train
+docker compose -f compose.yaml -f compose.gpu.yaml --profile train run --rm train
 ```
 
-If GPU is not attached via Compose, try:
+#### Fix NVIDIA runtime errors on WSL2 / Linux
+
+If the host `nvidia-smi` works but Compose reports the following error, the GPU driver
+is available to WSL but the Docker daemon does not have the NVIDIA runtime:
+
+```text
+could not select device driver "nvidia" with capabilities: [[gpu]]
+```
+
+For Docker Engine installed directly inside WSL/Linux, install and configure the
+NVIDIA Container Toolkit:
 
 ```bash
-docker compose --profile train run --rm --gpus all train
+curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey \
+  | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list \
+  | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' \
+  | sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit
+sudo nvidia-ctk runtime configure --runtime=docker
+sudo service docker restart
 ```
 
-**中文（训练流水线）：** 需 NVIDIA GPU + Container Toolkit。配置 `.env` 或 `./.kaggle/kaggle.json` 后执行 `docker compose --profile train up train`；权重输出到 `models/best.pt`，再用下方推理服务。
+Verify that Docker can access the GPU:
+
+```bash
+docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi
+```
+
+If Docker Desktop supplies the Docker daemon, update Docker Desktop and the Windows
+NVIDIA driver, enable this WSL distribution under **Settings → Resources → WSL
+Integration**, then restart Docker Desktop. Do not configure a second Docker daemon
+inside WSL.
+
+After the verification command succeeds, start GPU training:
+
+```bash
+docker compose -f compose.yaml -f compose.gpu.yaml --profile train up train
+```
+
+默认的 `docker compose --profile train up train` 使用 **CPU**，避免未安装
+NVIDIA Runtime 时直接失败。GPU 训练必须叠加 `compose.gpu.yaml`。训练权重输出到
+`models/best.pt` 和 `models/best.onnx`。
 
 ### Inference (traffic analysis)
 
