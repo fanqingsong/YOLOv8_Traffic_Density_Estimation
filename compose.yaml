@@ -28,6 +28,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.train
+    shm_size: "8gb"
     environment:
       DATA_YAML: /data/dataset/data.yaml
       MODEL_OUTPUT: /models/best.pt
