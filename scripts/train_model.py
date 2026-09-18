@@ -59,7 +59,9 @@ def main() -> int:
         best_model.export(format="onnx")
         exported = MODEL_OUTPUT.with_suffix(".onnx")
         if exported.is_file():
-            shutil.copy2(exported, ONNX_OUTPUT)
+            ONNX_OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+            if exported.resolve() != ONNX_OUTPUT.resolve():
+                shutil.copy2(exported, ONNX_OUTPUT)
             print(f"Saved ONNX model to {ONNX_OUTPUT}")
 
     return 0
