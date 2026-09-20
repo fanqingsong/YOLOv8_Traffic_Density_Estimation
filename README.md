@@ -67,18 +67,21 @@ Real-Time Traffic Density Estimation with YOLOv8 in Action:
 - **`scripts/kaggle_download/`**: OOP Kaggle download stage; run with `python -m scripts.kaggle_download`.
 - **`scripts/dataset_preparation/`**: OOP dataset discovery and `data.yaml` normalization stage; run with `python -m scripts.dataset_preparation`.
 - **`scripts/model_training/`**: OOP YOLO training and artifact export stage; run with `python -m scripts.model_training`.
+- **`scripts/model_quantization/`**: OOP OpenVINO FP32/INT8 export and comparison stage; run with `python -m scripts.model_quantization`.
 - **`scripts/download_kaggle_dataset.py`**, **`prepare_dataset.py`**, **`train_model.py`**: Compatibility launchers used by Compose; all behavior lives in the packages above.
-- **`tests/`**: Standard-library unit tests for the three functional stages; no Kaggle access, model download, or GPU is required.
+- **`tests/`**: Standard-library unit tests for the functional stages; no Kaggle access, model download, or GPU is required.
 - **`Dockerfile`**: CPU inference image (CPU PyTorch wheels).
 - **`Dockerfile.train`**: Training image (PyTorch CUDA runtime + Kaggle CLI).
-- **`compose.yaml`**: Independent Compose services for download, prepare, train, and inference.
+- **`Dockerfile.quantize`**: CPU OpenVINO/NNCF quantization image.
+- **`compose.yaml`**: Independent Compose services for download, prepare, train, quantization, and inference.
 - **`compose.gpu.yaml`**: NVIDIA GPU override for the `train` service.
 - **`.env.example`**: Template for Kaggle credentials and optional training overrides.
 - **`requirements.txt`**: Python dependencies for CPU inference.
 - **`requirements-train.txt`**: Python dependencies for training.
+- **`requirements-quantization.txt`**: Extra NNCF dependency for INT8 post-training quantization.
 - **`LICENSE.txt`**: Project license.
 - **`data/`**: Created at runtime (gitignored). Raw Kaggle extract, prepared `data.yaml`, training runs, and copied sample video.
-- **`models/`**: Created at runtime. Holds `best.pt` / `best.onnx` after training.
+- **`models/`**: Created at runtime. Holds trained, OpenVINO, and comparison artifacts.
 - **`output/`**: Created at runtime (gitignored). Docker inference writes `processed_sample_video.avi` here.
 
 Weights, the demo video, cover images, the original Jupyter notebook, and the demo GIF are not stored in this tree. Train to produce weights; copy or download `sample_video.mp4` for inference. The original notebook lives on [Kaggle](https://www.kaggle.com/code/farzadnekouei/real-time-traffic-density-estimation-with-yolov8) and in the [upstream GitHub repo](https://github.com/FarzadNekouee/YOLOv8_Traffic_Density_Estimation).
@@ -93,6 +96,7 @@ Use `docker compose` (plugin), not `docker-compose`. Every training/inference st
 | `download-data` | Kaggle download into `data/raw/` |
 | `prepare-data` | Path fix-up → `data/dataset/data.yaml` |
 | `train` | Fine-tune + export weights |
+| `quantize-model` | Export OpenVINO FP32/INT8 + compare accuracy, latency, and size |
 | `traffic-analysis` | Headless inference (`DISPLAY_VIDEO=false`) |
 
 ### Training pipeline (Kaggle)
@@ -193,6 +197,28 @@ Default `docker compose run --rm train` uses **CPU**, so it does not fail when t
 NVIDIA runtime is missing. GPU training must merge `compose.gpu.yaml`. Weights are
 written to `models/best.pt` and `models/best.onnx`.
 
+### OpenVINO INT8 quantization and comparison
+
+After training and dataset preparation, run the independent CPU quantization stage:
+
+```bash
+docker compose run --rm --build quantize-model
+```
+
+It calibrates INT8 with the dataset named by `data/dataset/data.yaml`, exports both
+models from the same `best.pt`, and validates them under the same OpenVINO runtime:
+
+- `models/best_openvino_fp32/`: the pre-quantization FP32 baseline
+- `models/best_openvino_int8/`: the post-training INT8 model
+- `models/quantization_comparison.json`: mAP50-95, mAP50, inference ms/image,
+  artifact bytes, accuracy deltas, speedup, and compression ratio
+
+The comparison deliberately uses OpenVINO for both models, so the reported delta is
+caused by precision rather than by changing from PyTorch to OpenVINO. Latency is
+hardware- and workload-specific; compare results produced by the same container run.
+Optional `.env` overrides are `QUANT_IMGSZ`, `QUANT_BATCH`, `QUANT_DEVICE`, and
+`QUANT_CALIBRATION_FRACTION` (range `(0, 1]`, default `1.0`).
+
 ### Inference (traffic analysis)
 
 **Prerequisites:** Docker with Compose plugin, `models/best.pt`, and `sample_video.mp4`
@@ -208,6 +234,13 @@ The first build may take several minutes (CPU PyTorch wheels in the inference im
 
 Output: `output/processed_sample_video.avi`. The container runs headless
 (`DISPLAY_VIDEO=false`); there is no OpenCV window.
+
+To run traffic analysis with the quantized model, override the container model path:
+
+```bash
+MODEL_PATH=/app/models/best_openvino_int8 \
+  docker compose run --rm --build traffic-analysis
+```
 
 
 ## 🚀 Instructions for Local Execution

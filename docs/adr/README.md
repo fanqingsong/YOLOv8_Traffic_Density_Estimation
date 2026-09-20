@@ -6,6 +6,7 @@ Numbered ADRs in this folder are binding for new code in this repository.
 |----|--------|--------|
 | [0001](0001-modular-oop-and-delivery.md) | Modular packages, OOP encapsulation, Compose delivery | Accepted |
 | [0002](0002-functional-stage-packages.md) | Separate packages for functional stages | Accepted |
+| [0003](0003-openvino-int8-quantization.md) | OpenVINO INT8 quantization and like-for-like comparison | Accepted |
 
 When adding a decision, copy the template below into `NNNN-short-title.md` and add a row here.
 

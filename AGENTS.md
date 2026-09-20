@@ -12,16 +12,17 @@ Respond to the human in **Chinese** in the chat. Keep new code comments in the s
 | `scripts/kaggle_download/` | OOP Kaggle download stage |
 | `scripts/dataset_preparation/` | OOP data.yaml normalization + sample video stage |
 | `scripts/model_training/` | OOP YOLO training + artifact export stage |
+| `scripts/model_quantization/` | OOP OpenVINO FP32/INT8 export + comparison stage |
 | `scripts/real_time_traffic_analysis.py` | Thin launcher for the package |
 | `scripts/download_kaggle_dataset.py` | Compatibility launcher for `kaggle_download` |
 | `scripts/prepare_dataset.py` | Compatibility launcher for `dataset_preparation` |
 | `scripts/train_model.py` | Compatibility launcher for `model_training` |
 | `tests/` | Offline unit tests for functional stages |
-| `compose.yaml` | One-shot services: `download-data`, `prepare-data`, `train`, `traffic-analysis` |
+| `compose.yaml` | One-shot services: download, prepare, train, quantize, inference |
 | `compose.gpu.yaml` | NVIDIA override for `train` only |
 | `docs/adr/` | Architecture Decision Records |
 
-Application Python lives under `scripts/`, never new feature files at the repo root. Weights, `sample_video.mp4`, and `data/` are runtime artifacts (often gitignored). The three functional stages use separate packages documented by ADR 0002; keep their root-level scripts thin.
+Application Python lives under `scripts/`, never new feature files at the repo root. Weights, `sample_video.mp4`, and `data/` are runtime artifacts (often gitignored). Functional stages use separate packages documented by ADR 0002 and ADR 0003; keep compatibility scripts thin.
 
 **Inference learning order** (also in `scripts/traffic_analysis/__init__.py`): `config` → `video_io` → `preprocessor` → `detector` → `counter` → `visualizer` → `pipeline` → `python -m scripts.traffic_analysis`.
 
@@ -53,6 +54,7 @@ Lane counting is **not** point-in-polygon. Intensity uses box `xyxy` left `x` vs
 - Use `docker compose`, never `docker-compose`.
 - Every service is one-shot: `docker compose run --rm <service>`. Do not treat bare `docker compose up` as the app entry (it would start download, prepare, train, and inference together).
 - Default `train` is CPU (`TRAIN_DEVICE=cpu`). GPU: `docker compose -f compose.yaml -f compose.gpu.yaml run --rm train`.
+- Quantization is CPU OpenVINO INT8: `docker compose run --rm quantize-model`. Compare FP32 and INT8 under the same runtime.
 - Inference image CMD: `python -m scripts.traffic_analysis`. Compose inference is headless (`DISPLAY_VIDEO=false`) and bind-mounts **repo-root** `./sample_video.mp4` (not `data/sample_video.mp4`). After prepare, copy `data/sample_video.mp4` to the repo root when needed.
 - Base images MAY use the Huawei mirror prefix `swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/`.
 
@@ -63,6 +65,7 @@ docker compose run --rm download-data
 docker compose run --rm prepare-data
 docker compose run --rm train                                          # CPU
 docker compose -f compose.yaml -f compose.gpu.yaml run --rm train      # GPU
+docker compose run --rm --build quantize-model                         # OpenVINO FP32 vs INT8
 docker compose run --rm --build traffic-analysis                       # needs models/best.pt + ./sample_video.mp4
 
 python -m scripts.traffic_analysis                                     # local; DISPLAY_VIDEO=true by default

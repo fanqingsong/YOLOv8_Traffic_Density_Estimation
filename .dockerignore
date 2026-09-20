@@ -1,6 +1,8 @@
 **
 !Dockerfile
 !Dockerfile.train
+!Dockerfile.quantize
 !requirements.txt
 !requirements-train.txt
+!requirements-quantization.txt
 !scripts/**

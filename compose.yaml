@@ -45,12 +45,31 @@ services:
       - ./models:/models
     command: ["python", "scripts/train_model.py"]
 
+  quantize-model:
+    build:
+      context: .
+      dockerfile: Dockerfile.quantize
+    environment:
+      QUANT_MODEL_INPUT: /models/best.pt
+      DATA_YAML: /data/dataset/data.yaml
+      OPENVINO_FP32_OUTPUT: /models/best_openvino_fp32
+      OPENVINO_INT8_OUTPUT: /models/best_openvino_int8
+      QUANT_REPORT_OUTPUT: /models/quantization_comparison.json
+      QUANT_IMGSZ: ${QUANT_IMGSZ:-640}
+      QUANT_BATCH: ${QUANT_BATCH:-1}
+      QUANT_DEVICE: ${QUANT_DEVICE:-cpu}
+      QUANT_CALIBRATION_FRACTION: ${QUANT_CALIBRATION_FRACTION:-1.0}
+    volumes:
+      - ./data:/data:ro
+      - ./models:/models
+    command: ["python", "-m", "scripts.model_quantization"]
+
   traffic-analysis:
     build:
       context: .
       dockerfile: Dockerfile
     environment:
-      MODEL_PATH: /app/models/best.pt
+      MODEL_PATH: ${MODEL_PATH:-/app/models/best.pt}
       VIDEO_PATH: /app/input/sample_video.mp4
       OUTPUT_PATH: /app/output/processed_sample_video.avi
       DISPLAY_VIDEO: "false"
