@@ -1,0 +1,41 @@
+---
+description: Binding engineering practices from ADR 0001 (modules, OOP, Compose, README).
+alwaysApply: true
+---
+
+# Follow ADR 0001
+
+All **new** code and docs in this repo MUST comply with [docs/adr/0001-modular-oop-and-delivery.md](docs/adr/0001-modular-oop-and-delivery.md). Do not silently weaken it.
+
+## Python
+
+- Put features under `scripts/<package>/`, not the repo root.
+- One capability per module; one primary class per module.
+- Public API: methods without `_` plus read-only `@property`. Internals: `_method` / `_attr` only used inside that class.
+- Do not expose `YOLO`, `VideoCapture`, or other vendor objects as public attributes. Return project types.
+- Return copies of mutable arrays from properties.
+- `from_env()` (or similar) owns environment variables; do not sprinkle `os.getenv` across collaborators.
+- Package `__init__.py` must not import OpenCV/Ultralytics at import time (lazy `__getattr__` for `run`).
+- Prefer a `Protocol` over importing Ultralytics in domain modules (counting, geometry).
+
+```python
+# ❌
+best_model.predict(frame)
+print(detector._model)
+
+# ✅
+outcome = detector.infer(masked_frame)
+snapshot = counter.tally(outcome.boxes)
+```
+
+## Docker / Compose
+
+- `docker compose`, never `docker-compose`.
+- One-shot services: `docker compose run --rm <service>` only. Never treat bare `docker compose up` as the app entry.
+- GPU train: merge `compose.gpu.yaml`. Default `train` stays CPU.
+- Inference CMD: `python -m scripts.traffic_analysis`.
+
+## Docs
+
+- README must match the tree (names, entry points, `sample_video.mp4` vs `data/sample_video.mp4`).
+- Supersede ADR 0001 with a new ADR if you change these rules; do not “just this once”.

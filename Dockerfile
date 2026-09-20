@@ -21,6 +21,6 @@ RUN pip install --upgrade pip \
         -i https://pypi.tuna.tsinghua.edu.cn/simple \
         -r requirements.txt
 
-COPY real_time_traffic_analysis.py .
+COPY scripts/ ./scripts/
 
-CMD ["python", "real_time_traffic_analysis.py"]
+CMD ["python", "-m", "scripts.traffic_analysis"]

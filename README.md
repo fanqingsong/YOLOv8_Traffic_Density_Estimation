@@ -1,9 +1,9 @@
 # 🚗 Real-Time Traffic Density Estimation with YOLOv8
-![Traffic Density Estimation](/images/cover_image_raw.png)
-
 
 ## 🔍 Overview
-This project harnesses the power of YOLOv8's real-time detection capabilities to tackle Traffic Density Estimation, a crucial aspect of urban and traffic management systems. The primary objective is to accurately count vehicles within designated areas in video frames to evaluate traffic flow. The insights garnered from this data are instrumental in pinpointing peak traffic times, identifying bottlenecks, and aiding urban planning. We have crafted an extensive toolkit that provides in-depth analysis of traffic patterns, thereby augmenting traffic control and city planning endeavors.
+This project harnesses the power of YOLOv8's real-time detection capabilities to tackle Traffic Density Estimation, a crucial aspect of urban and traffic management systems. The primary objective is to accurately count vehicles within designated areas in video frames to evaluate traffic flow. The insights garnered from this data are instrumental in pinpointing peak traffic times, identifying bottlenecks, and aiding urban planning.
+
+This repository adds a Docker Compose pipeline for downloading the Kaggle dataset, preparing YOLO paths, fine-tuning, and running headless inference.
 
 
 ## 🎯 Objectives
@@ -22,7 +22,7 @@ The pivotal milestones achieved in our project include:
 ### 🌐 Overview
 The **Top-View Vehicle Detection Image Dataset for YOLOv8** is essential for tasks like traffic monitoring and urban planning. It provides a unique perspective on vehicle behavior and traffic patterns from aerial views, facilitating the creation of AI models that can understand and analyze traffic flow comprehensively.
 
-### 🔍 Specifications 
+### 🔍 Specifications
 - 🚗 **Class**: 'Vehicle' including cars, trucks, and buses.
 - 🖼️ **Total Images**: 626
 - 📏 **Image Dimensions**: 640x640 pixels
@@ -60,32 +60,40 @@ Real-Time Traffic Density Estimation with YOLOv8 in Action:
 
 ## 📁 File Descriptions
 
-- **`images/`**: This directory houses the cover images for the project and the sample image utilized within the notebook.
-- **`models/`**: Contains the best-performing fine-tuned YOLOv8 model in both `.pt` (PyTorch format) and `.onnx` (Open Neural Network Exchange format) for broad compatibility.
-- **`LICENSE`**: The legal framework defining the terms under which this project's code and dataset can be used.
-- **`README.md`**: The document you are reading that offers an insightful overview and essential information about the project.
-- **`real_time_traffic_analysis.py`**: The Python script for deploying the YOLOv8 model to estimate traffic density in real-time on a local system.
-- **`Dockerfile`**: CPU inference container image.
-- **`Dockerfile.train`**: GPU training image (PyTorch CUDA + Kaggle CLI).
-- **`compose.yaml`**: Independent Docker Compose services for Kaggle download, dataset preparation, training, and inference.
-- **`compose.gpu.yaml`**: NVIDIA GPU override for the training service.
-- **`scripts/`**: `download_kaggle_dataset.py`, `prepare_dataset.py`, `train_model.py`.
-- **`requirements.txt`**: Python dependencies for the CPU inference image.
-- **`requirements-train.txt`**: Python dependencies for the training image.
-- **`output/`**: Created at runtime; holds `processed_sample_video.avi` when using Docker Compose.
-- **`real-time_traffic_density_estimation_yolov8.ipynb`**: The Jupyter notebook that documents the model development pipeline, from data preparation to model evaluation and inference.
-- **`Running_Real-Time_Traffic_Analysis.gif`**: A GIF demonstration showing the real-time traffic analysis capability of our model when the `real_time_traffic_analysis.py` script is executed.
-- **`sample_video.mp4`**: The video file used for testing the traffic estimation algorithm and the deployment code in `real_time_traffic_analysis.py`.
+- **`AGENTS.md`**: Instructions for coding agents (layout, ADR 0001, Compose, public API).
+- **`docs/adr/`**: Architecture Decision Records. [0001](docs/adr/0001-modular-oop-and-delivery.md) is binding for new Python, Compose, and README changes.
+- **`scripts/traffic_analysis/`**: OOP inference package. Each file owns one class: private `_` helpers and fields, public methods plus read-only `@property`. Reading order is in `__init__.py`. Run with `python -m scripts.traffic_analysis`.
+- **`scripts/real_time_traffic_analysis.py`**: Thin launcher equivalent to the module above.
+- **`scripts/kaggle_download/`**: OOP Kaggle download stage; run with `python -m scripts.kaggle_download`.
+- **`scripts/dataset_preparation/`**: OOP dataset discovery and `data.yaml` normalization stage; run with `python -m scripts.dataset_preparation`.
+- **`scripts/model_training/`**: OOP YOLO training and artifact export stage; run with `python -m scripts.model_training`.
+- **`scripts/download_kaggle_dataset.py`**, **`prepare_dataset.py`**, **`train_model.py`**: Compatibility launchers used by Compose; all behavior lives in the packages above.
+- **`tests/`**: Standard-library unit tests for the three functional stages; no Kaggle access, model download, or GPU is required.
+- **`Dockerfile`**: CPU inference image (CPU PyTorch wheels).
+- **`Dockerfile.train`**: Training image (PyTorch CUDA runtime + Kaggle CLI).
+- **`compose.yaml`**: Independent Compose services for download, prepare, train, and inference.
+- **`compose.gpu.yaml`**: NVIDIA GPU override for the `train` service.
+- **`.env.example`**: Template for Kaggle credentials and optional training overrides.
+- **`requirements.txt`**: Python dependencies for CPU inference.
+- **`requirements-train.txt`**: Python dependencies for training.
+- **`LICENSE.txt`**: Project license.
+- **`data/`**: Created at runtime (gitignored). Raw Kaggle extract, prepared `data.yaml`, training runs, and copied sample video.
+- **`models/`**: Created at runtime. Holds `best.pt` / `best.onnx` after training.
+- **`output/`**: Created at runtime (gitignored). Docker inference writes `processed_sample_video.avi` here.
+
+Weights, the demo video, cover images, the original Jupyter notebook, and the demo GIF are not stored in this tree. Train to produce weights; copy or download `sample_video.mp4` for inference. The original notebook lives on [Kaggle](https://www.kaggle.com/code/farzadnekouei/real-time-traffic-density-estimation-with-yolov8) and in the [upstream GitHub repo](https://github.com/FarzadNekouee/YOLOv8_Traffic_Density_Estimation).
 
 
 ## 🐳 Run with Docker Compose
 
-Compose defines independent training stages plus the inference service:
+Use `docker compose` (plugin), not `docker-compose`. Every training/inference stage is an independent one-shot service. Do **not** run `docker compose up` without a service name: that would start download, prepare, train, and inference together.
 
 | Service | Purpose |
 |---------|---------|
-| `download-data`, `prepare-data`, `train` | Kaggle download, path fix-up, model fine-tuning |
-| `traffic-analysis` (default) | Headless traffic density inference on `sample_video.mp4` |
+| `download-data` | Kaggle download into `data/raw/` |
+| `prepare-data` | Path fix-up → `data/dataset/data.yaml` |
+| `train` | Fine-tune + export weights |
+| `traffic-analysis` | Headless inference (`DISPLAY_VIDEO=false`) |
 
 ### Training pipeline (Kaggle)
 
@@ -119,7 +127,7 @@ docker compose run --rm prepare-data
 ```
 
 Verify `data/dataset/data.yaml`. If the dataset includes the demo video, this stage
-also creates `data/sample_video.mp4`.
+also writes `data/sample_video.mp4`.
 
 **Stage 3 — Train and export with an NVIDIA GPU**
 
@@ -130,12 +138,16 @@ docker compose -f compose.yaml -f compose.gpu.yaml run --rm train
 Verify the training run in `data/runs/detect/train/` and the exported models at
 `models/best.pt` and `models/best.onnx`.
 
-To train on CPU instead, use
-`docker compose run --rm train`. Stage 2 fails clearly when Stage 1
-has not produced a dataset, and Stage 3 fails clearly when Stage 2 has not produced
-`data/dataset/data.yaml`; neither command automatically runs an earlier stage.
+To train on CPU instead, use `docker compose run --rm train` (Compose sets
+`TRAIN_DEVICE=cpu`). Stage 2 fails clearly when Stage 1 has not produced a dataset,
+and Stage 3 fails clearly when Stage 2 has not produced `data/dataset/data.yaml`;
+neither command automatically runs an earlier stage.
 
-Optional training overrides in `.env`: `TRAIN_EPOCHS`, `TRAIN_BATCH`, `BASE_MODEL`, `TRAIN_DEVICE`.
+Optional overrides in `.env`: `TRAIN_EPOCHS`, `TRAIN_BATCH`, `BASE_MODEL`,
+`TRAIN_DEVICE`, `KAGGLE_DATASET`. Extra training knobs used by `scripts/train_model.py`
+include `TRAIN_PATIENCE`, `TRAIN_LR0`, `TRAIN_LRF`, `TRAIN_DROPOUT`, `TRAIN_SEED`,
+and `EXPORT_ONNX`. Dataset preparation also accepts `SAMPLE_VIDEO_OUTPUT` (default
+`/data/sample_video.mp4`).
 
 #### Fix NVIDIA runtime errors on WSL2 / Linux
 
@@ -177,76 +189,70 @@ After the verification command succeeds, run Stage 3:
 docker compose -f compose.yaml -f compose.gpu.yaml run --rm train
 ```
 
-默认的 `docker compose run --rm train` 使用 **CPU**，避免未安装
-NVIDIA Runtime 时直接失败。GPU 训练必须叠加 `compose.gpu.yaml`。训练权重输出到
-`models/best.pt` 和 `models/best.onnx`。
+Default `docker compose run --rm train` uses **CPU**, so it does not fail when the
+NVIDIA runtime is missing. GPU training must merge `compose.gpu.yaml`. Weights are
+written to `models/best.pt` and `models/best.onnx`.
 
 ### Inference (traffic analysis)
 
-**Prerequisites:** Docker with Compose plugin, `models/best.pt`, and `sample_video.mp4`.
+**Prerequisites:** Docker with Compose plugin, `models/best.pt`, and `sample_video.mp4`
+at the **repository root** (Compose bind-mounts `./sample_video.mp4`). After Stage 2:
 
 ```bash
+cp data/sample_video.mp4 sample_video.mp4
 mkdir -p models output
-docker compose build
-docker compose up
+docker compose run --rm --build traffic-analysis
 ```
 
 The first build may take several minutes (CPU PyTorch wheels in the inference image).
 
-Output: `output/processed_sample_video.avi`.
-
-```bash
-docker compose run --rm traffic-analysis
-docker compose down
-```
-
-**中文（推理）：**
-
-```bash
-mkdir -p models output
-docker compose build
-docker compose up
-# 或: docker compose run --rm traffic-analysis
-```
+Output: `output/processed_sample_video.avi`. The container runs headless
+(`DISPLAY_VIDEO=false`); there is no OpenCV window.
 
 
 ## 🚀 Instructions for Local Execution
 
-To experience the full capabilities of the YOLOv8 Traffic Density Estimation project on your local machine, follow these steps:
-
 ### 1️⃣. Initial Setup
-1. **Clone the Repository**: Start by cloning the project repository to your local system using the command below:
+1. **Clone the Repository**:
     ```bash
     git clone https://github.com/FarzadNekouee/YOLOv8_Traffic_Density_Estimation.git
     ```
-2. **Navigate to the Project Directory**: After cloning, change into the project directory with:
+    This Dockerized copy follows the same layout for inference (`scripts/traffic_analysis/`, `models/best.pt`, `sample_video.mp4`).
+2. **Navigate to the Project Directory**:
     ```bash
     cd YOLOv8_Traffic_Density_Estimation
     ```
 
-### 2️⃣. Exploring the Model Development Pipeline
-Get hands-on with the model development process and see the results of traffic density estimation:
-1. **Download the Dataset**: Access the dataset from [Kaggle](https://www.kaggle.com/datasets/farzadnekouei/top-view-vehicle-detection-image-dataset). Download and extract it to a known directory on your machine.
-2. **Open the Notebook**: Launch Jupyter Notebook or JupyterLab and open `real-time_traffic_density_estimation_yolov8.ipynb` to explore the model development pipeline.
-3. **Install Dependencies**: Ensure all necessary Python libraries are installed for flawless execution.
-4. **Update Paths**: Update the paths in the notebook for the dataset, sample image, and sample video to their respective locations on your local system.
-5. **Run the Notebook**: Execute all cells in the notebook to step through the data preprocessing, model training, and evaluation phases.
+### 2️⃣. Model development
+Use the Compose training stages above, or open the original pipeline on
+[Kaggle](https://www.kaggle.com/code/farzadnekouei/real-time-traffic-density-estimation-with-yolov8)
+/ the [upstream notebook](https://github.com/FarzadNekouee/YOLOv8_Traffic_Density_Estimation).
+This working tree does not include `real-time_traffic_density_estimation_yolov8.ipynb`.
 
 ### 3️⃣. Watching the Real-Time Performance
-Witness the real-time traffic analysis capability of our YOLOv8 model:
-1. **Install Ultralytics YOLO**: Ensure you have the `ultralytics` package installed by running:
+1. Place `models/best.pt` and `sample_video.mp4` in the project root (or set `MODEL_PATH` / `VIDEO_PATH`).
+2. Install inference dependencies:
     ```bash
-    pip install ultralytics
+    pip install -r requirements.txt
     ```
-2. **Run the Analysis Script**: Execute the script to start the real-time traffic density estimation:
+    (`ultralytics` will pull a PyTorch build; for a display window you need a non-headless OpenCV, so you may prefer `pip install ultralytics opencv-python` instead of `opencv-python-headless`.)
+3. Run the analysis package from the repository root:
     ```bash
-    python real_time_traffic_analysis.py
+    python -m scripts.traffic_analysis
     ```
-3. **Real-Time Analysis**: The video window will display the live traffic analysis. To exit, simply press 'q' while the video window is active. The processed video is also saved as `processed_sample_video.avi`.
+    Defaults: `DISPLAY_VIDEO=true` (press `q` to quit), output `processed_sample_video.avi` in the current directory. Headless:
+    ```bash
+    DISPLAY_VIDEO=false python -m scripts.traffic_analysis
+    ```
 
-This GIF showcases our algorithm running in real-time:
+### Run unit tests
 
-![Real-Time Traffic Analysis GIF](Running_Real-Time_Traffic_Analysis.gif) 
+The functional-stage tests use temporary files and test doubles, so they do not
+download data or run YOLO:
+
+```bash
+python -m unittest discover -v
+```
 
 
 ## 🔗 Additional Resources

@@ -1,0 +1,17 @@
+---
+description: Python OOP encapsulation for scripts/ (ADR 0001).
+globs: scripts/**/*.py
+alwaysApply: false
+---
+
+# scripts/ Python shape
+
+When editing `scripts/**/*.py`, match `scripts/traffic_analysis/` and ADR 0001:
+
+- Class owns data + behavior. Callers use public methods only.
+- Private: `_attr`, `_helper`. Public reads: `@property` (copy ndarrays).
+- Do not add module-level `YOLO(...)` / `cv2.VideoCapture` besides a `if __name__ == "__main__"` launcher.
+- New inference/training logic goes in a package module, not a new root file.
+- Keep `download_kaggle_dataset.py`, `prepare_dataset.py`, and `train_model.py` as thin compatibility launchers. Put behavior in `kaggle_download/`, `dataset_preparation/`, and `model_training/`.
+
+Orchestrator example: `TrafficAnalyzer.process_frame` may call `DetectionBand.mask`, `VehicleDetector.infer`, `LaneCounter.tally`, `FrameAnnotator.annotate` — never `_blackout` or `_model`.
