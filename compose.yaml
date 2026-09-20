@@ -52,8 +52,8 @@ services:
     environment:
       QUANT_MODEL_INPUT: /models/best.pt
       DATA_YAML: /data/dataset/data.yaml
-      OPENVINO_FP32_OUTPUT: /models/best_openvino_fp32
-      OPENVINO_INT8_OUTPUT: /models/best_openvino_int8
+      OPENVINO_FP32_OUTPUT: /models/best_fp32_openvino_model
+      OPENVINO_INT8_OUTPUT: /models/best_int8_openvino_model
       QUANT_REPORT_OUTPUT: /models/quantization_comparison.json
       QUANT_IMGSZ: ${QUANT_IMGSZ:-640}
       QUANT_BATCH: ${QUANT_BATCH:-1}

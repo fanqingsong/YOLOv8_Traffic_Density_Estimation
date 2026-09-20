@@ -208,8 +208,8 @@ docker compose run --rm --build quantize-model
 It calibrates INT8 with the dataset named by `data/dataset/data.yaml`, exports both
 models from the same `best.pt`, and validates them under the same OpenVINO runtime:
 
-- `models/best_openvino_fp32/`: the pre-quantization FP32 baseline
-- `models/best_openvino_int8/`: the post-training INT8 model
+- `models/best_fp32_openvino_model/`: the pre-quantization FP32 baseline
+- `models/best_int8_openvino_model/`: the post-training INT8 model
 - `models/quantization_comparison.json`: mAP50-95, mAP50, inference ms/image,
   artifact bytes, accuracy deltas, speedup, and compression ratio
 
@@ -238,7 +238,7 @@ Output: `output/processed_sample_video.avi`. The container runs headless
 To run traffic analysis with the quantized model, override the container model path:
 
 ```bash
-MODEL_PATH=/app/models/best_openvino_int8 \
+MODEL_PATH=/app/models/best_int8_openvino_model \
   docker compose run --rm --build traffic-analysis
 ```
 

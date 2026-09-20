@@ -48,13 +48,13 @@ class QuantizationConfig:
             fp32_output=Path(
                 os.getenv(
                     "OPENVINO_FP32_OUTPUT",
-                    "/models/best_openvino_fp32",
+                    "/models/best_fp32_openvino_model",
                 )
             ),
             int8_output=Path(
                 os.getenv(
                     "OPENVINO_INT8_OUTPUT",
-                    "/models/best_openvino_int8",
+                    "/models/best_int8_openvino_model",
                 )
             ),
             report_output=Path(

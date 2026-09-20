@@ -18,8 +18,8 @@ def make_config(root: Path) -> QuantizationConfig:
     return QuantizationConfig(
         model_input=root / "models" / "best.pt",
         data_yaml=root / "data" / "data.yaml",
-        fp32_output=root / "models" / "best_openvino_fp32",
-        int8_output=root / "models" / "best_openvino_int8",
+        fp32_output=root / "models" / "best_fp32_openvino_model",
+        int8_output=root / "models" / "best_int8_openvino_model",
         report_output=root / "models" / "comparison.json",
         imgsz=640,
         batch=1,
