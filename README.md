@@ -235,12 +235,16 @@ The first build may take several minutes (CPU PyTorch wheels in the inference im
 Output: `output/processed_sample_video.avi`. The container runs headless
 (`DISPLAY_VIDEO=false`); there is no OpenCV window.
 
-To run traffic analysis with the quantized model, override the container model path:
+Select the inference artifact with `MODEL_VARIANT`. Supported values are `pytorch`
+(default), `openvino-fp32`, and `openvino-int8`:
 
 ```bash
-MODEL_PATH=/app/models/best_int8_openvino_model \
+MODEL_VARIANT=openvino-int8 \
   docker compose run --rm --build traffic-analysis
 ```
+
+`MODEL_PATH` remains available as a full-path override and takes precedence over
+the selected variant.
 
 
 ## 🚀 Instructions for Local Execution
@@ -263,7 +267,7 @@ Use the Compose training stages above, or open the original pipeline on
 This working tree does not include `real-time_traffic_density_estimation_yolov8.ipynb`.
 
 ### 3️⃣. Watching the Real-Time Performance
-1. Place `models/best.pt` and `sample_video.mp4` in the project root (or set `MODEL_PATH` / `VIDEO_PATH`).
+1. Place the selected model under `models/` and `sample_video.mp4` in the project root (or set `MODEL_PATH` / `VIDEO_PATH`). Local `MODEL_VARIANT` values resolve to `models/best.pt`, `models/best_fp32_openvino_model/`, or `models/best_int8_openvino_model/`.
 2. Install inference dependencies:
     ```bash
     pip install -r requirements.txt

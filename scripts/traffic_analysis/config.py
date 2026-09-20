@@ -33,6 +33,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 import numpy as np
 from numpy.typing import NDArray
@@ -102,19 +103,49 @@ class LaneGeometry:
 class InferenceConfig:
     """权重路径与 YOLO 推理超参。"""
 
+    _MODEL_NAMES = {
+        "pytorch": "best.pt",
+        "openvino-fp32": "best_fp32_openvino_model",
+        "openvino-int8": "best_int8_openvino_model",
+    }
+
     def __init__(
         self,
         model_path: str,
         imgsz: int = 640,
         conf: float = 0.4,
+        model_variant: str = "custom",
     ) -> None:
         self._model_path = model_path
+        self._model_variant = model_variant
         self._imgsz = imgsz
         self._conf = conf
+
+    @classmethod
+    def from_env(cls) -> InferenceConfig:
+        """按模型变体选择默认产物；显式 ``MODEL_PATH`` 的优先级最高。"""
+        variant = os.getenv("MODEL_VARIANT", "pytorch").lower()
+        model_path = os.getenv("MODEL_PATH", "")
+        if model_path:
+            return cls(model_path=model_path, model_variant=variant)
+        if variant not in cls._MODEL_NAMES:
+            supported = ", ".join(cls._MODEL_NAMES)
+            raise ValueError(
+                f"Unsupported MODEL_VARIANT {variant!r}; choose one of: {supported}"
+            )
+        model_root = Path(os.getenv("MODEL_ROOT", "models"))
+        return cls(
+            model_path=str(model_root / cls._MODEL_NAMES[variant]),
+            model_variant=variant,
+        )
 
     @property
     def model_path(self) -> str:
         return self._model_path
+
+    @property
+    def model_variant(self) -> str:
+        return self._model_variant
 
     @property
     def imgsz(self) -> int:
@@ -209,9 +240,7 @@ class AnalysisConfig:
             video_path=os.getenv("VIDEO_PATH", "sample_video.mp4"),
             output_path=os.getenv("OUTPUT_PATH", "processed_sample_video.avi"),
             display_video=_env_flag("DISPLAY_VIDEO", "true"),
-            inference=InferenceConfig(
-                model_path=os.getenv("MODEL_PATH", "models/best.pt"),
-            ),
+            inference=InferenceConfig.from_env(),
         )
 
     @property

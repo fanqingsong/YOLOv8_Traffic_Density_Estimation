@@ -56,6 +56,7 @@ Lane counting is **not** point-in-polygon. Intensity uses box `xyxy` left `x` vs
 - Default `train` is CPU (`TRAIN_DEVICE=cpu`). GPU: `docker compose -f compose.yaml -f compose.gpu.yaml run --rm train`.
 - Quantization is CPU OpenVINO INT8: `docker compose run --rm quantize-model`. Compare FP32 and INT8 under the same runtime.
 - Inference image CMD: `python -m scripts.traffic_analysis`. Compose inference is headless (`DISPLAY_VIDEO=false`) and bind-mounts **repo-root** `./sample_video.mp4` (not `data/sample_video.mp4`). After prepare, copy `data/sample_video.mp4` to the repo root when needed.
+- Select inference artifacts with `MODEL_VARIANT=pytorch|openvino-fp32|openvino-int8`; an explicit `MODEL_PATH` overrides the variant.
 - Base images MAY use the Huawei mirror prefix `swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/`.
 
 ## Commands
