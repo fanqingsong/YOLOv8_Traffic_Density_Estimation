@@ -235,16 +235,16 @@ The first build may take several minutes (CPU PyTorch wheels in the inference im
 Output: `output/processed_sample_video.avi`. The container runs headless
 (`DISPLAY_VIDEO=false`); there is no OpenCV window.
 
-Select the inference artifact with `MODEL_VARIANT`. Supported values are `pytorch`
-(default), `openvino-fp32`, and `openvino-int8`:
+Run traffic analysis with the quantized INT8 model:
 
 ```bash
-MODEL_VARIANT=openvino-int8 \
-  docker compose run --rm --build traffic-analysis
+MODEL_PATH=/app/models/best_int8_openvino_model \
+docker compose run --rm --build traffic-analysis
 ```
 
-`MODEL_PATH` remains available as a full-path override and takes precedence over
-the selected variant.
+Alternatively, select `pytorch` (default), `openvino-fp32`, or `openvino-int8`
+with `MODEL_VARIANT`. An explicit `MODEL_PATH` takes precedence, so remove stale
+`MODEL_PATH` values from `.env` when using the variant selector.
 
 
 ## 🚀 Instructions for Local Execution
